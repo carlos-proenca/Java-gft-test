@@ -1,0 +1,20 @@
+server:
+  port: 8090
+
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: update
+  datasource:
+    continue-on-error: false
+    jmx-enabled: false
+    platform: postgres
+    name: postgres
+    url: 'jdbc:postgresql://localhost:5432/avaliation'
+    username: 'postgres'
+    password: 123
+    driverClassName: org.postgresql.Driver
+  flyway:
+    baselineOnMigrate: true
+  batch:
+    initialize-schema: always
