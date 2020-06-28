@@ -7,7 +7,6 @@ import org.springframework.batch.core.Step;
 import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
 import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
 import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
-import org.springframework.batch.core.launch.support.RunIdIncrementer;
 import org.springframework.batch.item.database.BeanPropertyItemSqlParameterSourceProvider;
 import org.springframework.batch.item.database.JdbcBatchItemWriter;
 import org.springframework.batch.item.database.builder.JdbcBatchItemWriterBuilder;
@@ -25,43 +24,41 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import br.com.gft.avaliation.model.Product;
 
-
 @Configuration
 @EnableBatchProcessing
 public class BatchConfiguration {
-	
-	private static final String SAVE_PRODUCT = "INSERT INTO product (\"name\", price, quantity, industry, origin, \"type\")" + 
-			"VALUES(:name, :price, :quantity, :industry, :origin, :type)";
 
-    @Autowired
-    public JobBuilderFactory jobBuilderFactory;
+	private static final String SAVE_PRODUCT = "INSERT INTO product (\"name\", price, quantity, industry, origin, \"type\")"
+			+ "VALUES(:name, :price, :quantity, :industry, :origin, :type)";
 
-    @Autowired
-    public StepBuilderFactory stepBuilderFactory;
+	@Autowired
+	public JobBuilderFactory jobBuilderFactory;
 
-    @Autowired
-	private DataSource dataSourceAudit;
+	@Autowired
+	public StepBuilderFactory stepBuilderFactory;
 
-    @Bean
-    public FlatFileItemReader<Product> reader() {
-        return new FlatFileItemReaderBuilder<Product>()
-                .name("dataItemReader")
-                .resource(new ClassPathResource("data/data_1.json"))
-                .lineMapper(lineMapper())
-                .fieldSetMapper(new BeanWrapperFieldSetMapper<Product>() {{
-                    setTargetType(Product.class);
-                }})
-                .build();
-    }
+	@Autowired
+	private DataSource dataSource;
 
-    @Bean
-    public LineMapper<Product> lineMapper() {
-    	ObjectMapper objectMapper = new ObjectMapper();
-    	LineMapper<Product> mapper = new LineMapper<Product>() {
+	@Bean
+	public FlatFileItemReader<Product> reader() {
+		return new FlatFileItemReaderBuilder<Product>().name("dataItemReader")
+				.resource(new ClassPathResource("data/data_1.json")).lineMapper(lineMapper())
+				.fieldSetMapper(new BeanWrapperFieldSetMapper<Product>() {
+					{
+						setTargetType(Product.class);
+					}
+				}).build();
+	}
+
+	@Bean
+	public LineMapper<Product> lineMapper() {
+		ObjectMapper objectMapper = new ObjectMapper();
+		LineMapper<Product> mapper = new LineMapper<Product>() {
 
 			@Override
 			public Product mapLine(String line, int lineNumber) throws Exception {
-				System.out.println("the line issss "+line);
+				System.out.println("the line issss " + line);
 				line = line.replace("{\"data\":[", "");
 				line = line.replace("$", "");
 				Product product = objectMapper.readValue(line, Product.class);
@@ -70,60 +67,52 @@ public class BatchConfiguration {
 		};
 
 		return mapper;
-		
+
 //    	final DefaultLineMapper<Product> defaultLineMapper = new DefaultLineMapper<>();
 //        defaultLineMapper.setFieldSetMapper(new ProductFieldSetMapper());
 //        return defaultLineMapper;
-    }
+	}
 
-    @Bean
-    public JdbcBatchItemWriter<Product> writer(final DataSource dataSource) {
-        return new JdbcBatchItemWriterBuilder<Product>()
-                .itemSqlParameterSourceProvider(new BeanPropertyItemSqlParameterSourceProvider<>())
-                .sql(SAVE_PRODUCT)
-                .dataSource(dataSource)
-                .build();
-    }
+	@Bean
+	public JdbcBatchItemWriter<Product> writer() {
+		return new JdbcBatchItemWriterBuilder<Product>()
+				.itemSqlParameterSourceProvider(new BeanPropertyItemSqlParameterSourceProvider<>()).sql(SAVE_PRODUCT)
+				.dataSource(this.dataSource).build();
+	}
 
-    @Bean
-    public Job importProductJob(Step step1) {
-        return jobBuilderFactory.get("importProductJob")
-                .incrementer(new RunIdIncrementer())
-               // .listener(listener)
-                .flow(step1)
-                .end()
-                .build();
-    }
+	@Bean
+	public Job importProductJob() {
+		return jobBuilderFactory.get("importProductJob")
+				// .listener(listener)
+				.start(this.importProductsStep()).build();
+	}
 
-    @Bean
-    public Step step1(JdbcBatchItemWriter<Product> writer) {
-        return stepBuilderFactory.get("step1")
-                .<Product, Product> chunk(10)
-                .reader(reader())
-                .writer(writer).faultTolerant().skipLimit(5847).skip(DuplicateKeyException.class)
-                .build();
-    }
-    
-    
-//    private PlatformTransactionManager transactionManager(){
-//        return new ResourcelessTransactionManager();
-//      }
-//    private JobRepository createJobRepository() throws Exception {
-//       JobRepositoryFactoryBean factory = new JobRepositoryFactoryBean();
-//       factory.setDataSource(dataSourceAudit);
-//       factory.setTransactionManager(transactionManager());
-//       factory.setIsolationLevelForCreate("ISOLATION_READ_COMMITTED");
-//       factory.setTablePrefix("SOMETHING.BATCH_");
-//       factory.setDatabaseType("POSTGRES");
-//       factory.setMaxVarCharLength(1000);
-//        return factory.getObject();
-//    }
+	@Bean
+	public Step importProductsStep() {
+		return stepBuilderFactory.get("importProductsStep").<Product, Product>chunk(10).reader(reader())
+				.writer(writer()).faultTolerant().skipLimit(12000).skip(DuplicateKeyException.class).build();
+	}
+
+//	private PlatformTransactionManager transactionManager() {
+//		return new ResourcelessTransactionManager();
+//	}
 //
-//    @Bean
-//      public JobLauncher jobLauncherBc() throws Exception{
-//           SimpleJobLauncher jobLauncher = new SimpleJobLauncher();
-//           jobLauncher.setTaskExecutor(new SimpleAsyncTaskExecutor());
-//           jobLauncher.setJobRepository(createJobRepository());
-//          return jobLauncher;
-//  }
+//	private JobRepository createJobRepository() throws Exception {
+//		JobRepositoryFactoryBean factory = new JobRepositoryFactoryBean();
+//		factory.setDataSource(dataSource);
+//		factory.setTransactionManager(transactionManager());
+//		factory.setIsolationLevelForCreate("ISOLATION_READ_COMMITTED");
+//		factory.setTablePrefix("SOMETHING.BATCH_");
+//		factory.setDatabaseType("POSTGRES");
+//		factory.setMaxVarCharLength(1000);
+//		return factory.getObject();
+//	}
+
+//	@Bean
+//	public JobLauncher jobLauncher() throws Exception {
+//		SimpleJobLauncher jobLauncher = new SimpleJobLauncher();
+//		jobLauncher.setTaskExecutor(new SimpleAsyncTaskExecutor());
+////		jobLauncher.setJobRepository(createJobRepository());
+//		return jobLauncher;
+//	}
 }
