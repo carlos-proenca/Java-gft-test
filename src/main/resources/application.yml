@@ -17,4 +17,4 @@ spring:
   flyway:
     baselineOnMigrate: true
   batch:
-    initialize-schema: always
+    initialize-schema: always   

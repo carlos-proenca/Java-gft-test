@@ -4,18 +4,10 @@ import javax.sql.DataSource;
 
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
-import org.springframework.batch.core.configuration.JobRegistry;
 import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
 import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
 import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
-import org.springframework.batch.core.configuration.support.JobRegistryBeanPostProcessor;
-import org.springframework.batch.core.configuration.support.MapJobRegistry;
-import org.springframework.batch.core.explore.JobExplorer;
-import org.springframework.batch.core.launch.JobLauncher;
-import org.springframework.batch.core.launch.support.SimpleJobLauncher;
-import org.springframework.batch.core.launch.support.SimpleJobOperator;
-import org.springframework.batch.core.repository.JobRepository;
-import org.springframework.batch.core.repository.support.JobRepositoryFactoryBean;
+import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.item.database.BeanPropertyItemSqlParameterSourceProvider;
 import org.springframework.batch.item.database.JdbcBatchItemWriter;
 import org.springframework.batch.item.database.builder.JdbcBatchItemWriterBuilder;
@@ -23,14 +15,12 @@ import org.springframework.batch.item.file.FlatFileItemReader;
 import org.springframework.batch.item.file.LineMapper;
 import org.springframework.batch.item.file.builder.FlatFileItemReaderBuilder;
 import org.springframework.batch.item.file.mapping.BeanWrapperFieldSetMapper;
-import org.springframework.batch.support.transaction.ResourcelessTransactionManager;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
-import org.springframework.core.task.SimpleAsyncTaskExecutor;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.dao.DuplicateKeyException;
-import org.springframework.transaction.PlatformTransactionManager;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -51,38 +41,107 @@ public class BatchConfiguration {
 
 	@Autowired
 	private DataSource dataSource;
-
+	
+	@Autowired
+	private TaskExecutor taskExecutor;
+	
 	@Bean
-	public FlatFileItemReader<Product> reader() {
-		return new FlatFileItemReaderBuilder<Product>().name("dataItemReader")
-				.resource(new ClassPathResource("data/data_1.json")).lineMapper(lineMapper())
-				.fieldSetMapper(new BeanWrapperFieldSetMapper<Product>() {
-					{
-						setTargetType(Product.class);
-					}
-				}).build();
+	public Job importProductJob() {
+		return jobBuilderFactory.get("importProductJob")
+				.flow(this.importProductsDatasource1Step())
+				.next(this.importProductsDatasource2Step())
+				.next(this.importProductsDatasource3Step())
+				.next(this.importProductsDatasource4Step())
+				.end()
+				.build();
+	}
+	
+	@Bean
+	public Step importProductsDatasource1Step() {
+		return stepBuilderFactory.get("importProductsDatasource1Step").<Product, Product>chunk(10)
+				.reader(readerDatasource1())
+				.writer(writer())
+				.faultTolerant().skipLimit(120000).skip(DuplicateKeyException.class)
+				.taskExecutor(taskExecutor)
+				.build();
+	}
+	
+	@Bean
+	public Step importProductsDatasource2Step() {
+		return stepBuilderFactory.get("importProductsDatasource2Step").<Product, Product>chunk(10)
+				.reader(readerDatasource2())
+				.writer(writer())
+				.faultTolerant().skipLimit(120000).skip(DuplicateKeyException.class)
+				.taskExecutor(taskExecutor)
+				.build();
+	}
+	
+	@Bean
+	public Step importProductsDatasource3Step() {
+		return stepBuilderFactory.get("importProductsDatasource3Step").<Product, Product>chunk(10)
+				.reader(readerDatasource3())
+				.writer(writer())
+				.faultTolerant().skipLimit(120000).skip(DuplicateKeyException.class)
+				.taskExecutor(taskExecutor)
+				.build();
 	}
 
+	@Bean
+	public Step importProductsDatasource4Step() {
+		return stepBuilderFactory.get("importProductsDatasource4Step").<Product, Product>chunk(10)
+				.reader(readerDatasource4())
+				.writer(writer())
+				.faultTolerant().skipLimit(120000).skip(DuplicateKeyException.class)
+				.taskExecutor(taskExecutor)
+				.build();
+	}
+
+	/**
+	 * TODO open a ticket to improve JsonReader for contains named arrays as field
+	 * 
+	 * @param datasourcePath
+	 * @return
+	 */
+	@Bean
+	@StepScope
+	public FlatFileItemReader<Product> readerDatasource1() {
+		return createReader("data/data_1.json");
+	}
+	
+	@Bean
+	@StepScope
+	public FlatFileItemReader<Product> readerDatasource2() {
+		return createReader("data/data_2.json");
+	}
+	
+	@Bean
+	@StepScope
+	public FlatFileItemReader<Product> readerDatasource3() {
+		return createReader("data/data_3.json");
+	}
+	
+	@Bean
+	@StepScope
+	public FlatFileItemReader<Product> readerDatasource4() {
+		return createReader("data/data_4.json");
+	}
+	
 	@Bean
 	public LineMapper<Product> lineMapper() {
 		ObjectMapper objectMapper = new ObjectMapper();
 		LineMapper<Product> mapper = new LineMapper<Product>() {
-
 			@Override
 			public Product mapLine(String line, int lineNumber) throws Exception {
 				System.out.println("the line issss " + line);
-				line = line.replace("{\"data\":[", "");
-				line = line.replace("$", "");
-				Product product = objectMapper.readValue(line, Product.class);
-				return product;
+				return objectMapper.readValue(prepateLine(line), Product.class);
+			}
+
+			private String prepateLine(String line) {
+				return line.replace("{\"data\":[", "").replace("$", "");
 			}
 		};
 
 		return mapper;
-
-//    	final DefaultLineMapper<Product> defaultLineMapper = new DefaultLineMapper<>();
-//        defaultLineMapper.setFieldSetMapper(new ProductFieldSetMapper());
-//        return defaultLineMapper;
 	}
 
 	@Bean
@@ -91,74 +150,14 @@ public class BatchConfiguration {
 				.itemSqlParameterSourceProvider(new BeanPropertyItemSqlParameterSourceProvider<>()).sql(SAVE_PRODUCT)
 				.dataSource(this.dataSource).build();
 	}
-
-	@Bean
-	public Job importProductJob() {
-		 Job job = jobBuilderFactory.get("importProductJob")
-				// .listener(listener)
-				 //.incrementer(new RunIdIncrementer())
-				.start(this.importProductsStep()).build();
-		 
-		 System.out.println("restart"+job.isRestartable());
-		 return job;
-	}
-
-	@Bean
-	public Step importProductsStep() {
-		 Step step = stepBuilderFactory.get("importProductsStep4").<Product, Product>chunk(10).reader(reader())
-				.writer(writer()).faultTolerant().skipLimit(12000).skip(DuplicateKeyException.class).build();
-		return step;
-	}
-	@Bean
-	public JobRegistry creatJobRegistry() {
-	    return new MapJobRegistry();
-	}
-
-	@Bean
-	public JobRegistryBeanPostProcessor jobRegistryBeanPostProcessor() {
-	    JobRegistryBeanPostProcessor jobRegistryBeanPostProcessor = new JobRegistryBeanPostProcessor();
-	    jobRegistryBeanPostProcessor.setJobRegistry(creatJobRegistry());
-	    return jobRegistryBeanPostProcessor;
-	}
-
-	 @Bean
-	 public SimpleJobOperator JobOperator(JobExplorer jobExplorer,
-	                                JobRepository jobRepository,
-	                                JobRegistry jobRegistry) throws Exception {
-
-		SimpleJobOperator jobOperator = new SimpleJobOperator();
-
-		jobOperator.setJobExplorer(jobExplorer);
-		jobOperator.setJobRepository(jobRepository);
-		jobOperator.setJobRegistry(creatJobRegistry());
-		jobOperator.setJobLauncher(createJobLauncher());
-		//jobOperator.startNextInstance("importProductJob");
-		return jobOperator;
-	 }
-	 
-	 
-	private PlatformTransactionManager transactionManager() {
-		return new ResourcelessTransactionManager();
-	}
-
-	private JobRepository createJobRepository() throws Exception {
-		JobRepositoryFactoryBean factory = new JobRepositoryFactoryBean();
-		factory.setDataSource(dataSource);
-		factory.setTransactionManager(transactionManager());
-		factory.setIsolationLevelForCreate("ISOLATION_READ_COMMITTED");
-		factory.setTablePrefix("SOMETHING.BATCH_");
-		factory.setDatabaseType("POSTGRES");
-		factory.setMaxVarCharLength(1000);
-		return factory.getObject();
-	}
-
-	@Bean
-	public JobLauncher createJobLauncher() throws Exception {
-		SimpleJobLauncher jobLauncher = new SimpleJobLauncher();
-		jobLauncher.setTaskExecutor(new SimpleAsyncTaskExecutor());
-		jobLauncher.setJobRepository(createJobRepository());
-		return jobLauncher;
-	}
 	
-	
+	private FlatFileItemReader<Product> createReader(String datasourcePath) {
+		return new FlatFileItemReaderBuilder<Product>().name("dataItemReaderFor"+datasourcePath)
+				.resource(new ClassPathResource(datasourcePath)).lineMapper(lineMapper())
+				.fieldSetMapper(new BeanWrapperFieldSetMapper<Product>() {
+					{
+						setTargetType(Product.class);
+					}
+				}).build();
+	}
 }
