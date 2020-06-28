@@ -10,9 +10,9 @@ spring:
     jmx-enabled: false
     platform: postgres
     name: postgres
-    url: 'jdbc:postgresql://localhost:5432/avaliation'
-    username: 'postgres'
-    password: 123
+    url: 'jdbc:postgresql://localhost:5432/bionexo'
+    username: 'bionexo'
+    password: bionexo2020
     driverClassName: org.postgresql.Driver
   flyway:
     baselineOnMigrate: true

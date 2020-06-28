@@ -4,9 +4,18 @@ import javax.sql.DataSource;
 
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
+import org.springframework.batch.core.configuration.JobRegistry;
 import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
 import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
 import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
+import org.springframework.batch.core.configuration.support.JobRegistryBeanPostProcessor;
+import org.springframework.batch.core.configuration.support.MapJobRegistry;
+import org.springframework.batch.core.explore.JobExplorer;
+import org.springframework.batch.core.launch.JobLauncher;
+import org.springframework.batch.core.launch.support.SimpleJobLauncher;
+import org.springframework.batch.core.launch.support.SimpleJobOperator;
+import org.springframework.batch.core.repository.JobRepository;
+import org.springframework.batch.core.repository.support.JobRepositoryFactoryBean;
 import org.springframework.batch.item.database.BeanPropertyItemSqlParameterSourceProvider;
 import org.springframework.batch.item.database.JdbcBatchItemWriter;
 import org.springframework.batch.item.database.builder.JdbcBatchItemWriterBuilder;
@@ -14,11 +23,14 @@ import org.springframework.batch.item.file.FlatFileItemReader;
 import org.springframework.batch.item.file.LineMapper;
 import org.springframework.batch.item.file.builder.FlatFileItemReaderBuilder;
 import org.springframework.batch.item.file.mapping.BeanWrapperFieldSetMapper;
+import org.springframework.batch.support.transaction.ResourcelessTransactionManager;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.dao.DuplicateKeyException;
+import org.springframework.transaction.PlatformTransactionManager;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -82,37 +94,71 @@ public class BatchConfiguration {
 
 	@Bean
 	public Job importProductJob() {
-		return jobBuilderFactory.get("importProductJob")
+		 Job job = jobBuilderFactory.get("importProductJob")
 				// .listener(listener)
+				 //.incrementer(new RunIdIncrementer())
 				.start(this.importProductsStep()).build();
+		 
+		 System.out.println("restart"+job.isRestartable());
+		 return job;
 	}
 
 	@Bean
 	public Step importProductsStep() {
-		return stepBuilderFactory.get("importProductsStep").<Product, Product>chunk(10).reader(reader())
+		 Step step = stepBuilderFactory.get("importProductsStep4").<Product, Product>chunk(10).reader(reader())
 				.writer(writer()).faultTolerant().skipLimit(12000).skip(DuplicateKeyException.class).build();
+		return step;
+	}
+	@Bean
+	public JobRegistry creatJobRegistry() {
+	    return new MapJobRegistry();
 	}
 
-//	private PlatformTransactionManager transactionManager() {
-//		return new ResourcelessTransactionManager();
-//	}
-//
-//	private JobRepository createJobRepository() throws Exception {
-//		JobRepositoryFactoryBean factory = new JobRepositoryFactoryBean();
-//		factory.setDataSource(dataSource);
-//		factory.setTransactionManager(transactionManager());
-//		factory.setIsolationLevelForCreate("ISOLATION_READ_COMMITTED");
-//		factory.setTablePrefix("SOMETHING.BATCH_");
-//		factory.setDatabaseType("POSTGRES");
-//		factory.setMaxVarCharLength(1000);
-//		return factory.getObject();
-//	}
+	@Bean
+	public JobRegistryBeanPostProcessor jobRegistryBeanPostProcessor() {
+	    JobRegistryBeanPostProcessor jobRegistryBeanPostProcessor = new JobRegistryBeanPostProcessor();
+	    jobRegistryBeanPostProcessor.setJobRegistry(creatJobRegistry());
+	    return jobRegistryBeanPostProcessor;
+	}
 
-//	@Bean
-//	public JobLauncher jobLauncher() throws Exception {
-//		SimpleJobLauncher jobLauncher = new SimpleJobLauncher();
-//		jobLauncher.setTaskExecutor(new SimpleAsyncTaskExecutor());
-////		jobLauncher.setJobRepository(createJobRepository());
-//		return jobLauncher;
-//	}
+	 @Bean
+	 public SimpleJobOperator JobOperator(JobExplorer jobExplorer,
+	                                JobRepository jobRepository,
+	                                JobRegistry jobRegistry) throws Exception {
+
+		SimpleJobOperator jobOperator = new SimpleJobOperator();
+
+		jobOperator.setJobExplorer(jobExplorer);
+		jobOperator.setJobRepository(jobRepository);
+		jobOperator.setJobRegistry(creatJobRegistry());
+		jobOperator.setJobLauncher(createJobLauncher());
+		//jobOperator.startNextInstance("importProductJob");
+		return jobOperator;
+	 }
+	 
+	 
+	private PlatformTransactionManager transactionManager() {
+		return new ResourcelessTransactionManager();
+	}
+
+	private JobRepository createJobRepository() throws Exception {
+		JobRepositoryFactoryBean factory = new JobRepositoryFactoryBean();
+		factory.setDataSource(dataSource);
+		factory.setTransactionManager(transactionManager());
+		factory.setIsolationLevelForCreate("ISOLATION_READ_COMMITTED");
+		factory.setTablePrefix("SOMETHING.BATCH_");
+		factory.setDatabaseType("POSTGRES");
+		factory.setMaxVarCharLength(1000);
+		return factory.getObject();
+	}
+
+	@Bean
+	public JobLauncher createJobLauncher() throws Exception {
+		SimpleJobLauncher jobLauncher = new SimpleJobLauncher();
+		jobLauncher.setTaskExecutor(new SimpleAsyncTaskExecutor());
+		jobLauncher.setJobRepository(createJobRepository());
+		return jobLauncher;
+	}
+	
+	
 }
