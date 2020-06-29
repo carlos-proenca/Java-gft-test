@@ -1215,6 +1215,8 @@
 {"product":"STARF","quantity":95,"price":"$5.55","type":"S","industry":"n/a","origin":"CA"},
 {"product":"DEL","quantity":24,"price":"$4.91","type":"2XL","industry":"Forest Products","origin":"TN"},
 {"product":"EMMS","quantity":74,"price":"$3.75","type":"L","industry":"Broadcasting","origin":"TX"},
+{"product":"EMMS","quantity":74,"price":"$3.75","type":"L","industry":"Broadcasting","origin":"TX"},
+{"product":"EMMS","quantity":74,"price":"$3.75","type":"L","industry":"Broadcasting","origin":"TX"},
 {"product":"SKOR","quantity":75,"price":"$1.22","type":"XL","industry":"n/a","origin":"CA"},
 {"product":"RMCF","quantity":72,"price":"$7.53","type":"M","industry":"Specialty Foods","origin":"CA"},
 {"product":"HBM.WS","quantity":53,"price":"$4.56","type":"XL","industry":"n/a","origin":"OK"},

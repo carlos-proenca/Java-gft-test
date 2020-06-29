@@ -24,13 +24,13 @@ import org.springframework.dao.DuplicateKeyException;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import br.com.gft.avaliation.model.Product;
+import br.com.gft.avaliation.product.Product;
 
 @Configuration
 @EnableBatchProcessing
 public class BatchConfiguration {
 
-	private static final String SAVE_PRODUCT = "INSERT INTO product (\"name\", price, quantity, industry, origin, \"type\")"
+	private static final String SAVE_PRODUCT = "INSERT INTO products (\"name\", price, quantity, industry, origin, \"type\")"
 			+ "VALUES(:name, :price, :quantity, :industry, :origin, :type)";
 
 	@Autowired
