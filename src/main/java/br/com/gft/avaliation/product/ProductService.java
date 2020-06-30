@@ -32,14 +32,12 @@ public class ProductService {
 	}
 	
 	public ProductAmountDto getProductAmount(final String name) {
-		ProductAmountDto productAmountDto = new ProductAmountDto();
+		
 		List<Product> products = productRepository.findByName(name);
 		
 		products.forEach( product -> System.out.println("the product loaded is "+ product));
 		
-		productAmountDto.setProductName(name);
-		productAmountDto.setTotalQuantity(getProductTotalQuantity(products));
-		productAmountDto.setTotalAmount(getProductTotalAmount(products));
+		ProductAmountDto productAmountDto = new ProductAmountDto(name,getProductTotalAmount(products),getProductTotalQuantity(products) );
 		
 		return productAmountDto;
 	}

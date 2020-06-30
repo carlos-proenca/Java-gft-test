@@ -18,31 +18,25 @@ import br.com.gft.avaliation.product.ProductService;
  */
 @Service
 public class OrderPreviewService {
-	
-	
+
 	@Autowired
 	private ProductService productService;
-	
-	public List<OrderPreviewResponseVo> calculate() {
-		
+
+	public List<OrderPreviewResponseVo> calculate(final Integer shopkeepers, final String productName) {
+
 		List<OrderPreviewResponseVo> shopkeepersPreview = new ArrayList<>();
-		Integer shopkeepers = 2;
-		
-		ProductAmountDto productAmount = productService.getProductAmount("EMMS");
-		
+		ProductAmountDto productAmount = productService.getProductAmount(productName);
+
 		Double averagePrice = productAmount.getTotalAmount() / productAmount.getTotalQuantity();
 		Long productsByShopkeeper = productAmount.getTotalQuantity() / shopkeepers;
+
+		Double a = productsByShopkeeper * averagePrice;
 		
-		
-		OrderPreviewResponseVo orderPreviewResponseVo = new OrderPreviewResponseVo();
-		orderPreviewResponseVo.setProductAveragePrice(averagePrice);
-		orderPreviewResponseVo.setQuantity(productsByShopkeeper);
-		orderPreviewResponseVo.setTotalAmount(productsByShopkeeper * averagePrice);
-		orderPreviewResponseVo.setProductName("EMMS");
-		
+		OrderPreviewResponseVo orderPreviewResponseVo = new OrderPreviewResponseVo(productName, productsByShopkeeper, a,
+				averagePrice);
+
 		shopkeepersPreview.add(orderPreviewResponseVo);
-		shopkeepersPreview.add(orderPreviewResponseVo);
-		
+
 		return shopkeepersPreview;
 	}
 }
