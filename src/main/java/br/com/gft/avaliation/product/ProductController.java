@@ -9,13 +9,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping
+@RequestMapping("api/products")
 class ProductController {
 	
 	@Autowired
 	private ProductService service;
 	
-	@GetMapping("api/products/{id}")
+	@GetMapping("{id}")
 	public ResponseEntity<Product> findOne(@PathVariable final Long id) {
 		return new ResponseEntity<Product>(service.findById(id).get(), HttpStatus.OK);
 	}

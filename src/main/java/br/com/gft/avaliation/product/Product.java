@@ -12,12 +12,6 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-/**
- * Product Entity
- * 
- * @author Carlos Proença
- *
- */
 @Entity
 @Table(name = "products")
 @Data
@@ -46,6 +40,5 @@ public class Product {
 
 	@JsonProperty
 	private String origin;
-
 	
 }

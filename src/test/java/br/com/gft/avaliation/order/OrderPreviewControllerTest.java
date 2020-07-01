@@ -9,7 +9,6 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.RequestBuilder;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
@@ -25,9 +24,9 @@ public class OrderPreviewControllerTest {
     public void getProductTest() throws Exception {
     	
     	   RequestBuilder request = MockMvcRequestBuilders
-                   .get("/api/orders/preview/3/EMMS");
+                   .get("/api/orders/preview?quantityShopkeeper=3&productName=EMMS");
                 
-           MvcResult result = mockMvc.perform(request)
+           mockMvc.perform(request)
                    .andExpect(status().isOk())
                    .andReturn();
     }

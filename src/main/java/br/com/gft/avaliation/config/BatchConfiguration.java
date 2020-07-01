@@ -96,12 +96,6 @@ public class BatchConfiguration {
 				.build();
 	}
 
-	/**
-	 * TODO open a ticket to improve JsonReader for contains named arrays as field
-	 * 
-	 * @param datasourcePath
-	 * @return
-	 */
 	@Bean
 	@StepScope
 	public FlatFileItemReader<Product> readerDatasource1() {
