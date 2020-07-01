@@ -10,19 +10,19 @@ To start this project we need to install as pre requirements the following techn
 - maven
 - docker
 
-# The first step is run inside a bash terminal with following command:
+## The first step is run inside a bash terminal with following command:
 
 _docker-compose up_
 
-# The second step is execute junit tests and compile the code:
+## The second step is execute junit tests and compile the code:
 
 _mvn clean install_
 
-# The last step is execute application with:
+## The last step is execute application with:
 
 _mvn spring-boot:run_
 
-# To call the Order Preview API we can execute the GET HTTP operation as following:
+## To call the Order Preview API we can execute the GET HTTP operation as following:
 
 _curl --request GET 'http://localhost:8090/api/orders/preview?quantityShopkeeper=3&productName=EMMS'_
 
